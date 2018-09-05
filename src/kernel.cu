@@ -242,10 +242,15 @@ __device__ glm::vec3 computeVelocityChangeBruteForce(int N, int iSelf, const glm
 	// Rule 2: boids try to stay a distance d away from each other
 	// Rule 3: boids try to match the speed of surrounding boids
 
-	//Rule 1
 	glm::vec3 term1 = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 term2 = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 term3 = glm::vec3(0.0f, 0.0f, 0.0f);
+
 	glm::vec3 massCenter = glm::vec3(0.0f, 0.0f, 0.0f);
 	const glm::vec3& thisPos = pos[iSelf];
+	int neighborCounterRule1 = 0;
+	int neighborCounterRule2 = 0;
+	int neighborCounterRule3 = 0;
 	for (int boidK = 0; boidK < N; ++boidK)
 	{
 		if (boidK == iSelf)
@@ -253,46 +258,37 @@ __device__ glm::vec3 computeVelocityChangeBruteForce(int N, int iSelf, const glm
 			continue;
 		}
 		const glm::vec3& boidPos = pos[boidK];
-		if ((boidPos - thisPos).length() < rule1Distance)
-		{
-			massCenter += pos[boidK];
-		}
-	}
-	float averageFactor = 1.0f / static_cast<float>(N - 1);
-	massCenter = averageFactor * massCenter;
-	term1 = (massCenter - thisPos) * rule1Scale;
+		float distance = glm::distance(boidPos, thisPos);
 
-	//Rule 2
-	glm::vec3 term2 = glm::vec3(0.0f, 0.0f, 0.0f);
-	for (int boidK = 0; boidK < N; ++boidK)
-	{
-		if (boidK == iSelf)
+		if (distance < rule1Distance)
 		{
-			continue;
+			massCenter += boidPos;
+			++neighborCounterRule1;
 		}
-		const glm::vec3& boidPos = pos[boidK];
-		if ((boidPos - thisPos).length() < rule2Distance)
+		if (distance < rule2Distance)
 		{
 			term2 -= (boidPos - thisPos);
+			++neighborCounterRule2;
 		}
-	}
-	term2 = rule2Scale * term2;
-
-	//Rule 3
-	glm::vec3 term3 = glm::vec3(0.0f, 0.0f, 0.0f);
-	for (int boidK = 0; boidK < N; ++boidK)
-	{
-		if (boidK == iSelf)
-		{
-			continue;
-		}
-		const glm::vec3& boidPos = pos[boidK];
-		if ((boidPos - thisPos).length() < rule3Distance)
+		if (distance < rule3Distance)
 		{
 			term3 += vel[boidK];
+			++neighborCounterRule3;
 		}
 	}
-	term3 = rule3Scale * averageFactor * term3;
+	if (neighborCounterRule1 != 0)
+	{
+		float averageFactor = 1.0f / static_cast<float>(neighborCounterRule1);
+		massCenter = averageFactor * massCenter;
+	}
+
+	term1 = rule1Scale * (massCenter - thisPos);
+	term2 = rule2Scale * term2;
+	if (neighborCounterRule3 != 0)
+	{
+		float averageFactor = 1.0f / static_cast<float>(neighborCounterRule3);
+		term3 = rule3Scale * averageFactor * term3;
+	}
 
 	return term1 + term2 + term3;
 }
@@ -308,8 +304,17 @@ __global__ void kernUpdateVelocityBruteForce(int N, glm::vec3 *pos,
   // Clamp the speed
   // Record the new velocity into vel2. Question: why NOT vel1?
 	int pid = threadIdx.x + (blockIdx.x * blockDim.x);
+	if (pid >= N)
+	{
+		return;
+	}
 	glm::vec3 updatedVelocity = computeVelocityChangeBruteForce(N, pid, pos, vel1);
-	vel2[pid] = updatedVelocity;
+	glm::vec3 novelVelocity = vel1[pid] + updatedVelocity;
+	if (glm::length(novelVelocity) > maxSpeed)
+	{
+		novelVelocity = maxSpeed * glm::normalize(novelVelocity);
+	}
+	vel2[pid] = novelVelocity;
 }
 
 /**
@@ -417,9 +422,11 @@ void Boids::stepSimulationNaive(float dt) {
 	dim3 blocksPerGrid(1 + (numObjects) / blockSize);
 	kernUpdatePos<<<blocksPerGrid, threadsPerBlock>>>
 		(numObjects, dt, dev_pos, dev_vel1);
+	checkCUDAErrorWithLine("kernel update pos");
 
 	kernUpdateVelocityBruteForce<<<blocksPerGrid, threadsPerBlock>>>
 		(numObjects, dev_pos, dev_vel1, dev_vel2);
+	checkCUDAErrorWithLine("kernel update vel");
 	glm::vec3* temp = dev_vel1;
 	dev_vel1 = dev_vel2;
 	dev_vel2 = temp;
