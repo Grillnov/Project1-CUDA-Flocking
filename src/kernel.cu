@@ -242,14 +242,11 @@ __device__ glm::vec3 computeVelocityChangeBruteForce(int N, int iSelf, const glm
 	// Rule 2: boids try to stay a distance d away from each other
 	// Rule 3: boids try to match the speed of surrounding boids
 
-	glm::vec3 term1 = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 term2 = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 term3 = glm::vec3(0.0f, 0.0f, 0.0f);
-
-	glm::vec3 massCenter = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 massCenter = glm::vec3(0.0f);
+	glm::vec3 c = glm::vec3(0.0f);
+	glm::vec3 perceivedVelocity = glm::vec3(0.0f);
 	const glm::vec3& thisPos = pos[iSelf];
 	int neighborCounterRule1 = 0;
-	int neighborCounterRule2 = 0;
 	int neighborCounterRule3 = 0;
 	for (int boidK = 0; boidK < N; ++boidK)
 	{
@@ -267,29 +264,35 @@ __device__ glm::vec3 computeVelocityChangeBruteForce(int N, int iSelf, const glm
 		}
 		if (distance < rule2Distance)
 		{
-			term2 -= (boidPos - thisPos);
-			++neighborCounterRule2;
+			c -= (boidPos - thisPos);
 		}
 		if (distance < rule3Distance)
 		{
-			term3 += vel[boidK];
+			perceivedVelocity += vel[boidK];
 			++neighborCounterRule3;
 		}
 	}
-	if (neighborCounterRule1 != 0)
+
+	glm::vec3 term1 = glm::vec3(0.0f);
+	glm::vec3 term2 = glm::vec3(0.0f);
+	glm::vec3 term3 = glm::vec3(0.0f);
+
+	if (neighborCounterRule1 >= 1)
 	{
 		float averageFactor = 1.0f / static_cast<float>(neighborCounterRule1);
 		massCenter = averageFactor * massCenter;
+		term1 = rule1Scale * (massCenter - thisPos);
 	}
+	
+	term2 = rule2Scale * c;
 
-	term1 = rule1Scale * (massCenter - thisPos);
-	term2 = rule2Scale * term2;
-	if (neighborCounterRule3 != 0)
+	if (neighborCounterRule3 >= 1)
 	{
 		float averageFactor = 1.0f / static_cast<float>(neighborCounterRule3);
 		term3 = rule3Scale * averageFactor * term3;
 	}
 
+	//return term1;
 	return term1 + term2 + term3;
 }
 
