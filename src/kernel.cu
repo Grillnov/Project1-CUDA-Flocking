@@ -499,7 +499,12 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 		for (int cellI = 0; cellI < 8; ++cellI)
 		{
 			int gridCellCount = gridResolution * gridResolution * gridResolution;
-			
+			//What if it exceeds the index?
+			if (probeCells[cellI] < 0 || probeCells[cellI] >= gridCellCount)
+			{
+				continue;
+			}
+
 			int startIndex = gridCellStartIndices[probeCells[cellI]];
 			int endIndex = gridCellEndIndices[probeCells[cellI]];
 			for (int boidJ = startIndex; boidJ <= endIndex; ++boidJ)
@@ -605,22 +610,23 @@ void Boids::stepSimulationScatteredGrid(float dt) {
   // - Perform velocity updates using neighbor search
   // - Update positions
   // - Ping-pong buffers as needed
-	dim3 cellsPerBlock((gridCellCount + blockSize - 1) / blockSize);
+	dim3 cellsPerBlock(1 + (gridCellCount / blockSize));
+	//If a value is negative we know that it isn't adjacent to anything
 	kernResetIntBuffer<<<cellsPerBlock, threadsPerBlock>>>(gridCellCount, dev_gridCellStartIndices, -1);
 	kernResetIntBuffer<<<cellsPerBlock, threadsPerBlock>>>(gridCellCount, dev_gridCellEndIndices, -2);
 
-	dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
-	kernComputeIndices<<<fullBlocksPerGrid, threadsPerBlock>>>(numObjects, gridSideCount, gridMinimum,
+	dim3 blocksPerGrid(1 + (numObjects / blockSize));
+	kernComputeIndices<<<blocksPerGrid, threadsPerBlock>>>(numObjects, gridSideCount, gridMinimum,
 		gridInverseCellWidth, dev_pos, dev_particleArrayIndices, dev_particleGridIndices);
 
 	thrust::sort_by_key(dev_thrust_particleGridIndices, dev_thrust_particleGridIndices + numObjects, dev_thrust_particleArrayIndices);
 
-	kernIdentifyCellStartEnd<<<fullBlocksPerGrid, threadsPerBlock>>>(numObjects, dev_particleGridIndices,
+	kernIdentifyCellStartEnd<<<blocksPerGrid, threadsPerBlock>>>(numObjects, dev_particleGridIndices,
 		dev_gridCellStartIndices, dev_gridCellEndIndices);
-	kernUpdateVelNeighborSearchScattered<<<fullBlocksPerGrid, threadsPerBlock>>>(numObjects, gridSideCount,
+	kernUpdateVelNeighborSearchScattered<<<blocksPerGrid, threadsPerBlock>>>(numObjects, gridSideCount,
 		gridMinimum, gridInverseCellWidth, gridCellWidth, dev_gridCellStartIndices, dev_gridCellEndIndices,
 		dev_particleArrayIndices, dev_pos, dev_vel1, dev_vel2);
-	kernUpdatePos<<<fullBlocksPerGrid, threadsPerBlock>>>(numObjects, dt, dev_pos, dev_vel2);
+	kernUpdatePos<<<blocksPerGrid, threadsPerBlock>>>(numObjects, dt, dev_pos, dev_vel2);
 
 	glm::vec3* temp = dev_vel1;
 	dev_vel1 = dev_vel2;
