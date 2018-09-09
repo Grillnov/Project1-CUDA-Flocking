@@ -311,16 +311,15 @@ __device__ glm::vec3 computeVelocityChangeBruteForce(int N, int iSelf, const glm
 		massCenter = averageFactor * massCenter;
 		term1 = rule1Scale * (massCenter - thisPos);
 	}
-	
+
 	term2 = rule2Scale * c;
 
 	if (neighborCounterRule3 >= 1)
 	{
 		float averageFactor = 1.0f / static_cast<float>(neighborCounterRule3);
-		term3 = rule3Scale * averageFactor * term3;
+		term3 = rule3Scale * averageFactor * perceivedVelocity;
 	}
 
-	//return term1;
 	return term1 + term2 + term3;
 }
 
@@ -557,7 +556,7 @@ __global__ void kernUpdateVelNeighborSearchScattered(
 		if (neighborCounterRule3 >= 1)
 		{
 			float averageFactor = 1.0f / static_cast<float>(neighborCounterRule3);
-			term3 = rule3Scale * averageFactor * term3;
+			term3 = rule3Scale * averageFactor * perceivedVelocity;
 		}
 
 		glm::vec3 updatedVelocity = term1 + term2 + term3;
@@ -685,7 +684,7 @@ __global__ void kernUpdateVelNeighborSearchCoherent(
 		if (neighborCounterRule3 >= 1)
 		{
 			float averageFactor = 1.0f / static_cast<float>(neighborCounterRule3);
-			term3 = rule3Scale * averageFactor * term3;
+			term3 = rule3Scale * averageFactor * perceivedVelocity;
 		}
 
 		glm::vec3 updatedVelocity = term1 + term2 + term3;
