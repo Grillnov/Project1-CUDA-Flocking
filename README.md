@@ -15,19 +15,22 @@ Project 1 - Flocking**
 Flocks of flocks of playful boids. The number shown at the top-left corner is the framerate by NVIDIA's shadowplay.
   ![](images/showcase.gif)
   
-* **Analysis**
+* **Analysis: boids**
 A side-by-side comparison of the performance of these 3 methods. The y axis represents the framerate (frames per second) and the x axis is the log of the number of total particles. (i.e. x = 10 means that there're 1024 boids in total) Technically it's a log plot.
   ![](images/sidebyside.png)
   
-  * For the naive implementation we can clearly see that the framerate drops quadratically with respect to the log of the number of boids. It's fairly easy to explain this:
+  * For the naive implementation we can clearly see that the framerate drops quadratically with respect to the log of the number of boids. It's fairly easy to explain this behavior: Our naive implementation is a 2-layered nested loop for all boids and thus has a time complexity of O(n^2).
+  * For the scattered uniform grid implementation the performance is significantly boosted compared to the naive one, since we are no longer looping over every boid for every boid. Instead, we loop only over those that're considered within the proximity of the current boid.
+  * For the coherent implementation, the trends are the same as the scattered uniform grid, and it outperforms the scattered grid implementation since we no-longer have the "middleman" in the way. But at lower number of boids we can see that sometimes the implementation without the "middleman" runs faster. This can be explained since the coherent implementation creates more overhead when it comes to re-shuffling, the performance boost is eaten up by the additional calculation introduced.
+  * The anomaly happening around n = 2^13 to 2^14 for these 2 uniform grid implementation methods: The complexity of the uniform grid is not deterministic and still has an upper bound of O(n^2), therefore when the distribution becomes dense, the computational cost won't necessiarly increase proportionally.
+  
+* **Analysis continued: blocks**
+ ![](images/auto.png)
+  * 
   
 * **Debug windows: breakpoint**
 Picked index == 1043 for the breakpoint condition.
-  ![](images/auto.png)
-
-* **Debug windows: system info**
-The information of the warps.
-  ![](images/info.png)
+  
 
 * Feedback
-Pascal and even newer architectures are out there so we might want to upgrade our base code accordingly?
+The pseudo-code is somewhat misleading when it comes to averaging mass-center or perceived velocity.
