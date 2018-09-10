@@ -17,6 +17,7 @@ Flocks of flocks of playful boids. The number shown at the top-left corner is th
   
 * **Analysis: boids**
 A side-by-side comparison of the performance of these 3 methods. The y axis represents the framerate (frames per second) and the x axis is the log of the number of total particles. (i.e. x = 10 means that there're 1024 boids in total) Technically it's a log plot.
+The block size is 128 for all test cases.
   ![](images/sidebyside.png)
   
   * For the naive implementation we can clearly see that the framerate drops quadratically with respect to the log of the number of boids. It's fairly easy to explain this behavior: Our naive implementation is a 2-layered nested loop for all boids and thus has a time complexity of O(n^2).
@@ -25,8 +26,14 @@ A side-by-side comparison of the performance of these 3 methods. The y axis repr
   * The anomaly happening around n = 2^13 to 2^14 for these 2 uniform grid implementation methods: The complexity of the uniform grid is not deterministic and still has an upper bound of O(n^2), therefore when the distribution becomes dense, the computational cost won't necessiarly increase proportionally.
   
 * **Analysis continued: blocks**
- ![](images/auto.png)
-  * 
+ * Naive implementation: tested at 8192 particles. The y axis represents the framerate (frames per second) and the x axis is the log of the block size. (i.e. x = 10 means that block size is set to 1024)
+ ![](images/naive.png)
+ 
+ * Scattered implementation
+ ![](images/sca.png)
+ 
+ * Coherence implementation
+ ![](images/coh.png)
   
 * **Debug windows: breakpoint**
 Picked index == 1043 for the breakpoint condition.
