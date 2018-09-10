@@ -26,18 +26,18 @@ The block size is 128 for all test cases.
   * The anomaly happening around n = 2^13 to 2^14 for these 2 uniform grid implementation methods: The complexity of the uniform grid is not deterministic and still has an upper bound of O(n^2), therefore when the distribution becomes dense, the computational cost won't necessiarly increase proportionally.
   
 * **Analysis continued: blocks**
- * Naive implementation: tested at 8192 particles. The y axis represents the framerate (frames per second) and the x axis is the log of the block size. (i.e. x = 10 means that block size is set to 1024)
+ * Naive implementation: tested at 8192 particles. The y axis represents the framerate (frames per second) and the x axis is the log of the block size. (i.e. x = 10 means that block size is set to 1024). The performance drastically dropped when block size reaches 1024 (maximum).
+ 
  ![](images/naive.png)
  
- * Scattered implementation
+ * Scattered implementation: tested at 262144 particles. The performance is relatively not sensitive to the block size, but dropping with block size increasing as well.
+ 
  ![](images/sca.png)
  
- * Coherence implementation
+ * Coherent implementation: tested at 262144 particles. The performance is relatively not sensitive to the block size, but dropping with block size increasing as well.
+ 
  ![](images/coh.png)
-  
-* **Debug windows: breakpoint**
-Picked index == 1043 for the breakpoint condition.
-  
 
+ * Explanation: For the naive implementation, the performance drop when block size reached 1024 is probably caused by the spatial locality: When block size is small enough and each stream multiprocessor only loops the 2-layered loop for a relatively small amount of boids, the global memory patch accessed by each stream multiprocessor is smaller. Therefore the locality is better when the block size is set smaller.
 * Feedback
 The pseudo-code is somewhat misleading when it comes to averaging mass-center or perceived velocity.
